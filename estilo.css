@@ -256,7 +256,7 @@ footer a:hover {
     border: 2px solid #f1f2f8;
     border-radius: 10px;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     padding: 0 20px;
     margin-bottom: 30px;
     text-align: left;
@@ -264,23 +264,28 @@ footer a:hover {
 }
 
 .container-juego .opciones .op1 {
-    animation: aparecerOp 1s forwards;
-    animation-delay: 1s;
+    animation: aparecerOp 0.45s forwards;
+    animation-delay: 0.15s;
 }
 
 .container-juego .opciones .op2 {
-    animation: aparecerOp 1s forwards;
-    animation-delay: 1.5s;
+    animation: aparecerOp 0.45s forwards;
+    animation-delay: 0.3s;
 }
 
 .container-juego .opciones .op3 {
-    animation: aparecerOp 1s forwards;
-    animation-delay: 2s;
+    animation: aparecerOp 0.45s forwards;
+    animation-delay: 0.45s;
 }
 
 .container-juego .opciones .op4 {
-    animation: aparecerOp 1s forwards;
-    animation-delay: 2.5s;
+    animation: aparecerOp 0.45s forwards;
+    animation-delay: 0.6s;
+}
+
+.container-juego .opciones.respondida label {
+    animation: none;
+    opacity: 1;
 }
 
 @keyframes aparecerOp {
@@ -300,13 +305,9 @@ footer a:hover {
 }
 
 .container-juego .info label input {
-    background-color: #3d8af7;
-    color: #fff;
-    width: 20px;
-    border: 2px solid #fff;
-    border-radius: 5px;
-    padding: 5px;
-    text-align: center;
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
 }
 
 /* Estilo de la opción seleccionada */
@@ -370,13 +371,16 @@ footer a:hover {
 
 .container-final .info .estadistica {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
 }
 
 .container-final .info .estadistica .acierto {
     display: flex;
+    justify-content: center;
     align-items: center;
+    width: 100%;
+    text-align: center;
 }
 
 .container-final .info .estadistica .acierto .numero {
@@ -486,4 +490,137 @@ footer a:hover {
     .container-final header a {
         position: static;
     }
+}
+
+.ruleta-box {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 20px auto;
+}
+
+.puntero-ruleta {
+    width: 0;
+    height: 0;
+
+    border-left: 16px solid transparent;
+    border-right: 16px solid transparent;
+    border-top: 38px solid #fff;
+
+    position: absolute;
+    top: -12px;
+    left: 134px;
+    z-index: 5;
+
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
+}
+
+.ruleta-goya {
+    position: relative;
+
+    width: 300px;
+    height: 300px;
+
+    border-radius: 50%;
+    border: 5px solid #fff;
+
+    background: conic-gradient(
+        from -36deg,
+        #e53935 0deg 72deg,
+        #fb8c00 72deg 144deg,
+        #fdd835 144deg 216deg,
+        #43a047 216deg 288deg,
+        #1e88e5 288deg 360deg
+    );
+
+    transition: transform 4s ease-out;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+
+.oculto {
+    display: none !important;
+}
+
+.letra-ruleta {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+
+    font-size: 34px;
+    font-weight: bold;
+    color: #fff;
+
+    text-shadow: 2px 2px 5px #000;
+    transform-origin: center;
+}
+
+.boton-ruleta {
+    display: inline-block;
+    background: rgba(222, 190, 36);
+    color: #000;
+    border: 2px solid #fff;
+    font-size: 20px;
+    padding: 12px 28px;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: 0.3s ease-in-out;
+}
+
+.boton-ruleta:hover {
+    background: #fff;
+    transform: scale(1.05);
+}
+
+.boton-ruleta:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.resultado-ruleta {
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+    text-align: center;
+}
+
+.respuesta-correcta {
+    background: #2ecc71 !important;
+    color: #fff !important;
+}
+
+.respuesta-incorrecta {
+    background: #e74c3c !important;
+    color: #fff !important;
+}
+
+.respuesta-bloqueada {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.resultado-respuesta {
+    margin-top: 20px;
+    text-align: center;
+    color: #fff;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+.boton-siguiente {
+    display: inline-block;
+    margin-top: 15px;
+    padding: 12px 28px;
+    border-radius: 12px;
+    background: #e6c917;
+    color: #000;
+    text-decoration: none;
+    border: 2px solid #fff;
+}
+
+.boton-siguiente:hover {
+    background: #fff;
+}
+
+.oculto {
+    display: none !important;
 }

@@ -1,12 +1,39 @@
 function seleccionar(labelSeleccionado) {
-    var labels = document.getElementsByTagName("label");
-    labels[0].className = "";
-    labels[1].className = "";
-    labels[2].className = "";
-    labels[3].className = "";
+    labelSeleccionado.classList.add("opcionSeleccionada");
+}
 
-    labelSeleccionado.className = "opcionSeleccionada";
+function responder(labelSeleccionado, idRespuesta) {
+    const formulario = document.getElementById("formPregunta");
 
+    if (formulario.dataset.enviando === "1") {
+        return;
+    }
+
+    formulario.dataset.enviando = "1";
+
+    const respuestaCorrecta = formulario.dataset.respuestaCorrecta;
+    const opcionSeleccionada = labelSeleccionado.dataset.opcion;
+
+    seleccionar(labelSeleccionado);
+
+    const input = document.getElementById(idRespuesta);
+    input.checked = true;
+
+    formulario.querySelectorAll(".opciones label").forEach((label) => {
+        const opcion = label.dataset.opcion;
+
+        if (opcion === respuestaCorrecta) {
+            label.classList.add("respuesta-correcta");
+        } else if (opcion === opcionSeleccionada) {
+            label.classList.add("respuesta-incorrecta");
+        } else {
+            label.classList.add("respuesta-bloqueada");
+        }
+    });
+
+    setTimeout(() => {
+        formulario.submit();
+    }, 150);
 }
 
 $(function() {

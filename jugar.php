@@ -1,110 +1,236 @@
-
 <?php
 session_start();
 
-//Si el usuario no esta logeado lo enviamos al index
-if (!$_SESSION['usuario']) {
+if (!isset($_SESSION['usuario']) || !isset($_SESSION['idCategoria'])) {
     header("Location:index.php");
+    exit;
 }
 
-//
 include("admin/funciones.php");
 
 $confi = obtenerConfiguracion();
-$totalPreguntasPorJuego = $confi['totalPreguntas'];
+$totalPreguntasPorJuego = max(1, (int) $confi['totalPreguntas']);
 
-//Variables que contral la partida
+if (isset($_GET['siguiente'])) {
+    // Ya respondió una pregunta
+    $respuestaElegida = $_GET['respuesta'] ?? null;
+    $respuestaCorrecta = $_SESSION['respuesta_correcta'] ?? null;
 
-
-if(isset($_GET['siguiente'])){//Ya esta jugando
-    //Aumento 1 en las estadísticas
-    aumentarRespondidas();
-
-    //Controlar si la respuesta esta bien
-    if($_SESSION['respuesta_correcta']==$_GET['respuesta']){
-        $_SESSION['correctas'] = $_SESSION['correctas'] + 1;
+    if ($respuestaElegida === null || $respuestaCorrecta === null || !isset($_SESSION['preguntaActualId'])) {
+        header("Location:index.php");
+        exit;
     }
 
-    //
-    $_SESSION['numPreguntaActual'] = $_SESSION['numPreguntaActual'] + 1;
-    if($_SESSION['numPreguntaActual'] < ($totalPreguntasPorJuego)){
-        $preguntaActual = obtenerPreguntaPorId($_SESSION['idPreguntas'][ $_SESSION['numPreguntaActual']]);
-        $_SESSION['respuesta_correcta'] = $preguntaActual['correcta'];
-    }else{
-        //Lo enviamos al pagina de los resultados
-        //Calculo la cantidad de respuestas incorrectas y lo guardo en una variable global
-        $_SESSION['incorrectas'] = $totalPreguntasPorJuego - $_SESSION['correctas'];
-        //Obetengo el nombre de la categoria y lo ponogo en una variable global
-        $_SESSION['nombreCategoria'] = obtenerNombreTema($_SESSION['idCategoria']);
-        $_SESSION['score'] = ($_SESSION['correctas'] * 100)/$totalPreguntasPorJuego;
+    // Una recarga no debe volver a contabilizar la misma respuesta.
+    if (!isset($_SESSION['respondio']) || $_SESSION['respondio'] !== true) {
+        aumentarRespondidas();
+
+        $_SESSION['respondio'] = true;
+        $_SESSION['respuesta_elegida'] = $respuestaElegida;
+
+        if ($respuestaCorrecta == $respuestaElegida) {
+            $_SESSION['respuesta_fue_correcta'] = true;
+            $_SESSION['correctas'] = min(
+                ($_SESSION['correctas'] ?? 0) + 1,
+                $totalPreguntasPorJuego
+            );
+        } else {
+            $_SESSION['respuesta_fue_correcta'] = false;
+            $_SESSION['incorrectas'] = 1;
+        }
+    }
+
+    $preguntaActual = obtenerPreguntaPorId($_SESSION['preguntaActualId']);
+
+    if (!$preguntaActual) {
+        header("Location:index.php");
+        exit;
+    }
+
+} else {
+    // Comenzó una nueva pregunta desde la ruleta
+
+    if (!isset($_SESSION['correctas'])) {
+        $_SESSION['correctas'] = 0;
+    }
+
+    // Nunca se muestra una pregunta adicional después de completar la décima.
+    if ($_SESSION['correctas'] >= $totalPreguntasPorJuego) {
+        $_SESSION['correctas'] = $totalPreguntasPorJuego;
+        $_SESSION['score'] = 100;
         header("Location: final.php");
+        exit;
     }
 
-}else{//comenzó a jugar
-    $_SESSION['correctas']=0;
-    $_SESSION['numPreguntaActual'] = 0;
+    $_SESSION['respondio'] = false;
+    $_SESSION['respuesta_elegida'] = null;
+    $_SESSION['respuesta_fue_correcta'] = null;
+
+    $_SESSION['numPreguntaActual'] = $_SESSION['correctas'];
+
     $_SESSION['preguntas'] = obtenerIdsPreguntasPorCategoria($_SESSION['idCategoria']);
     $_SESSION['idPreguntas'] = array();
 
     foreach ($_SESSION['preguntas'] as $idPregunta) {
-        array_push($_SESSION['idPreguntas'],$idPregunta['id']); // Item agregado
+        array_push($_SESSION['idPreguntas'], $idPregunta['id']);
     }
-    
-    //Desordeno el arreglo
+
+    if (count($_SESSION['idPreguntas']) === 0) {
+        $_SESSION['incorrectas'] = 1;
+        $_SESSION['correctas'] = 0;
+        $_SESSION['nombreCategoria'] = obtenerNombreTema($_SESSION['idCategoria']);
+        $_SESSION['score'] = 0;
+        header("Location: final.php");
+        exit;
+    }
+
     shuffle($_SESSION['idPreguntas']);
+
     $preguntaActual = obtenerPreguntaPorId($_SESSION['idPreguntas'][0]);
+
+    if (!$preguntaActual) {
+        $_SESSION['incorrectas'] = 1;
+        $_SESSION['correctas'] = 0;
+        $_SESSION['nombreCategoria'] = obtenerNombreTema($_SESSION['idCategoria']);
+        $_SESSION['score'] = 0;
+        header("Location: final.php");
+        exit;
+    }
+
+    $_SESSION['preguntaActualId'] = $preguntaActual['id'];
     $_SESSION['respuesta_correcta'] = $preguntaActual['correcta'];
 }
+
+function claseRespuesta($opcion, $respuestaElegida, $respuestaCorrecta, $respondio) {
+    if (!$respondio) {
+        return "";
+    }
+
+    if ($opcion == $respuestaCorrecta) {
+        return "respuesta-correcta";
+    }
+
+    if ($opcion == $respuestaElegida && $opcion != $respuestaCorrecta) {
+        return "respuesta-incorrecta";
+    }
+
+    return "respuesta-bloqueada";
+}
+
+$respondio = isset($_SESSION['respondio']) && $_SESSION['respondio'] === true;
+$respuestaElegida = $_SESSION['respuesta_elegida'] ?? null;
+$respuestaCorrecta = $_SESSION['respuesta_correcta'] ?? null;
+$fueCorrecta = $_SESSION['respuesta_fue_correcta'] ?? null;
 ?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>ITG GAME</title>
+
     <link rel="stylesheet" href="estilo.css">
 </head>
+
 <body>
     <div class="container-juego" id="container-juego">
         <header class="header">
             <div class="categoria">
-                <?php echo obtenerNombreTema($preguntaActual['tema']) ?>
+                <?php echo obtenerNombreTema($preguntaActual['tema']); ?>
             </div>
-            <a href="index.php">INICIO</a>
+
+            <a href="index.php?reiniciar=1">REINICIAR</a>
         </header>
+
         <div class="info">
             <div class="estadoPregunta">
-                Pregunta <span class="numPregunta"><?php echo $_SESSION['numPreguntaActual'] + 1?></span> de <?php echo $totalPreguntasPorJuego ?>
+                Pregunta 
+                <span class="numPregunta">
+                    <?php echo ($_SESSION['numPreguntaActual'] ?? 0) + 1; ?>
+                </span> 
+                de <?php echo $totalPreguntasPorJuego; ?>
             </div>
+
             <h3>
-                <?php echo $preguntaActual['pregunta']?>
+                <?php echo $preguntaActual['pregunta']; ?>
             </h3>
-            <form action="<?php echo $_SERVER['PHP_SELF'] ?>" method="get">
-                <div class="opciones">
-                    <label for="respuesta1" onclick="seleccionar(this)" class="op1">
-                        <p><?php echo $preguntaActual['opcion_a']?></p>
+
+            <form
+                action="<?php echo $_SERVER['PHP_SELF']; ?>"
+                method="get"
+                id="formPregunta"
+                data-respuesta-correcta="<?php echo htmlspecialchars($respuestaCorrecta ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+            >
+                <div class="opciones<?php echo $respondio ? ' respondida' : ''; ?>">
+                    <label 
+                        for="respuesta1" 
+                        onclick="<?php echo $respondio ? '' : "responder(this, 'respuesta1')"; ?>" 
+                        data-opcion="A"
+                        class="op1 <?php echo claseRespuesta('A', $respuestaElegida, $respuestaCorrecta, $respondio); ?>"
+                    >
+                        <p><?php echo $preguntaActual['opcion_a']; ?></p>
                         <input type="radio" name="respuesta" value="A" id="respuesta1" required>
                     </label>
-                    <label for="respuesta2" onclick="seleccionar(this)" class="op2">
-                        <p><?php echo $preguntaActual['opcion_b']?></p>
+
+                    <label 
+                        for="respuesta2" 
+                        onclick="<?php echo $respondio ? '' : "responder(this, 'respuesta2')"; ?>" 
+                        data-opcion="B"
+                        class="op2 <?php echo claseRespuesta('B', $respuestaElegida, $respuestaCorrecta, $respondio); ?>"
+                    >
+                        <p><?php echo $preguntaActual['opcion_b']; ?></p>
                         <input type="radio" name="respuesta" value="B" id="respuesta2" required>
                     </label>
-                    <label for="respuesta3" onclick="seleccionar(this)" class="op3">
-                        <p><?php echo $preguntaActual['opcion_c']?></p>
+
+                    <label 
+                        for="respuesta3" 
+                        onclick="<?php echo $respondio ? '' : "responder(this, 'respuesta3')"; ?>" 
+                        data-opcion="C"
+                        class="op3 <?php echo claseRespuesta('C', $respuestaElegida, $respuestaCorrecta, $respondio); ?>"
+                    >
+                        <p><?php echo $preguntaActual['opcion_c']; ?></p>
                         <input type="radio" name="respuesta" value="C" id="respuesta3" required>
                     </label>
-                    <label for="respuesta4" onclick="seleccionar(this)" class="op4">
-                        <p><?php echo $preguntaActual['opcion_d']?></p>
+
+                    <label 
+                        for="respuesta4" 
+                        onclick="<?php echo $respondio ? '' : "responder(this, 'respuesta4')"; ?>" 
+                        data-opcion="D"
+                        class="op4 <?php echo claseRespuesta('D', $respuestaElegida, $respuestaCorrecta, $respondio); ?>"
+                    >
+                        <p><?php echo $preguntaActual['opcion_d']; ?></p>
                         <input type="radio" name="respuesta" value="D" id="respuesta4" required>
                     </label>
                 </div>
-                <div class="boton">
-                    <input type="submit" value="Siguiente" name="siguiente">
-                </div>
+
+                <?php if (!$respondio): ?>
+                    <input type="hidden" name="siguiente" value="1">
+                <?php endif; ?>
             </form>
+
+            <?php if ($respondio): ?>
+                <div class="resultado-respuesta">
+                    <?php if ($fueCorrecta): ?>
+                        <p>¡Correcto!</p>
+                    <?php else: ?>
+                        <p>
+                            Incorrecto. La respuesta correcta era: 
+                            <?php echo $respuestaCorrecta; ?>
+                        </p>
+                    <?php endif; ?>
+
+                    <a class="boton-siguiente" href="continuar.php">
+                        Siguiente
+                    </a>
+                </div>
+            <?php endif; ?>
         </div>
     </div>
+
     <script src="juego.js"></script>
 </body>
 </html>

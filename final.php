@@ -30,18 +30,14 @@ aumentarCompletados();
             <h2>RESULTADO FINAL</h2>
             <div class="estadistica">
                 <div class="acierto">
-                    <span class="correctas numero"> <?php echo $_SESSION['correctas'] ?></span>
+                    <span class="correctas numero"><?php echo $_SESSION['correctas'] ?? 0; ?></span>
                     CORRECTAS
-                </div>
-                <div class="acierto">
-                    <span class="incorrectas numero"> <?php echo $_SESSION['incorrectas'] ?></span>
-                    INCORRECTAS
                 </div>
             </div>
             <div class="score">
                 <div class="box">
-                    <div class="chart" data-percent="<?php echo $_SESSION['score'] ?>">
-                       <?php echo $_SESSION['score'] ?>%
+                    <div class="chart" data-percent="<?php echo $_SESSION['score'] ?? 0; ?>">
+                       <?php echo $_SESSION['score'] ?? 0; ?>%
                     </div>
                     <style>
 
@@ -52,7 +48,7 @@ aumentarCompletados();
       
                                         
 </div> 
-<a href="index.php" class="boton-estilizado">Ir al Menú</a>  
+<a href="index.php?reiniciar=1" class="boton-estilizado">Volver a intentar</a>  
     <script src="juego.js"></script>
 </body>
 </html>
