@@ -15,6 +15,19 @@ if (isset($_GET['siguiente'])) {
     // Ya respondió una pregunta
     $respuestaElegida = $_GET['respuesta'] ?? null;
     $respuestaCorrecta = $_SESSION['respuesta_correcta'] ?? null;
+    $opcionesValidas = ['A', 'B', 'C', 'D', 'TIEMPO_AGOTADO'];
+
+    if (!in_array($respuestaElegida, $opcionesValidas, true)) {
+        header("Location:index.php");
+        exit;
+    }
+
+    $tiempoAgotado = $respuestaElegida === 'TIEMPO_AGOTADO'
+        || microtime(true) >= ($_SESSION['limite_respuesta'] ?? 0);
+
+    if ($tiempoAgotado) {
+        $respuestaElegida = 'TIEMPO_AGOTADO';
+    }
 
     if ($respuestaElegida === null || $respuestaCorrecta === null || !isset($_SESSION['preguntaActualId'])) {
         header("Location:index.php");
@@ -27,8 +40,9 @@ if (isset($_GET['siguiente'])) {
 
         $_SESSION['respondio'] = true;
         $_SESSION['respuesta_elegida'] = $respuestaElegida;
+        $_SESSION['tiempo_agotado'] = $tiempoAgotado;
 
-        if ($respuestaCorrecta == $respuestaElegida) {
+        if (!$tiempoAgotado && $respuestaCorrecta == $respuestaElegida) {
             $_SESSION['respuesta_fue_correcta'] = true;
             $_SESSION['correctas'] = min(
                 ($_SESSION['correctas'] ?? 0) + 1,
@@ -58,6 +72,8 @@ if (isset($_GET['siguiente'])) {
     if ($_SESSION['correctas'] >= $totalPreguntasPorJuego) {
         $_SESSION['correctas'] = $totalPreguntasPorJuego;
         $_SESSION['score'] = 100;
+        $_SESSION['incorrectas'] = 0;
+        $_SESSION['partida_finalizada'] = true;
         header("Location: final.php");
         exit;
     }
@@ -65,6 +81,7 @@ if (isset($_GET['siguiente'])) {
     $_SESSION['respondio'] = false;
     $_SESSION['respuesta_elegida'] = null;
     $_SESSION['respuesta_fue_correcta'] = null;
+    $_SESSION['tiempo_agotado'] = false;
 
     $_SESSION['numPreguntaActual'] = $_SESSION['correctas'];
 
@@ -80,25 +97,47 @@ if (isset($_GET['siguiente'])) {
         $_SESSION['correctas'] = 0;
         $_SESSION['nombreCategoria'] = obtenerNombreTema($_SESSION['idCategoria']);
         $_SESSION['score'] = 0;
+        $_SESSION['partida_finalizada'] = true;
         header("Location: final.php");
         exit;
     }
 
-    shuffle($_SESSION['idPreguntas']);
+    if (!isset($_SESSION['preguntasUsadas'])) {
+        $_SESSION['preguntasUsadas'] = array();
+    }
 
-    $preguntaActual = obtenerPreguntaPorId($_SESSION['idPreguntas'][0]);
+    $idsDisponibles = array_values(array_diff(
+        $_SESSION['idPreguntas'],
+        $_SESSION['preguntasUsadas']
+    ));
+
+    // Si ya salieron todas las preguntas de la categoría, vuelve a habilitarlas.
+    if (count($idsDisponibles) === 0) {
+        $idsDisponibles = $_SESSION['idPreguntas'];
+        $_SESSION['preguntasUsadas'] = array_values(array_diff(
+            $_SESSION['preguntasUsadas'],
+            $_SESSION['idPreguntas']
+        ));
+    }
+
+    shuffle($idsDisponibles);
+
+    $preguntaActual = obtenerPreguntaPorId($idsDisponibles[0]);
 
     if (!$preguntaActual) {
         $_SESSION['incorrectas'] = 1;
         $_SESSION['correctas'] = 0;
         $_SESSION['nombreCategoria'] = obtenerNombreTema($_SESSION['idCategoria']);
         $_SESSION['score'] = 0;
+        $_SESSION['partida_finalizada'] = true;
         header("Location: final.php");
         exit;
     }
 
     $_SESSION['preguntaActualId'] = $preguntaActual['id'];
     $_SESSION['respuesta_correcta'] = $preguntaActual['correcta'];
+    $_SESSION['preguntasUsadas'][] = $preguntaActual['id'];
+    $_SESSION['limite_respuesta'] = microtime(true) + 10;
 }
 
 function claseRespuesta($opcion, $respuestaElegida, $respuestaCorrecta, $respondio) {
@@ -121,6 +160,10 @@ $respondio = isset($_SESSION['respondio']) && $_SESSION['respondio'] === true;
 $respuestaElegida = $_SESSION['respuesta_elegida'] ?? null;
 $respuestaCorrecta = $_SESSION['respuesta_correcta'] ?? null;
 $fueCorrecta = $_SESSION['respuesta_fue_correcta'] ?? null;
+$tiempoAgotado = $_SESSION['tiempo_agotado'] ?? false;
+$tiempoRestante = $respondio
+    ? 0
+    : max(0, (int) round((($_SESSION['limite_respuesta'] ?? microtime(true)) - microtime(true)) * 1000));
 ?>
 
 <!DOCTYPE html>
@@ -155,6 +198,18 @@ $fueCorrecta = $_SESSION['respuesta_fue_correcta'] ?? null;
                 de <?php echo $totalPreguntasPorJuego; ?>
             </div>
 
+            <?php if (!$respondio): ?>
+                <div class="temporizador" id="temporizador" role="timer" aria-live="polite">
+                    <div class="temporizador-info">
+                        <span>Tiempo</span>
+                        <strong><span id="segundosRestantes">10</span> s</strong>
+                    </div>
+                    <div class="temporizador-barra" aria-hidden="true">
+                        <span id="progresoTiempo"></span>
+                    </div>
+                </div>
+            <?php endif; ?>
+
             <h3>
                 <?php echo $preguntaActual['pregunta']; ?>
             </h3>
@@ -164,6 +219,7 @@ $fueCorrecta = $_SESSION['respuesta_fue_correcta'] ?? null;
                 method="get"
                 id="formPregunta"
                 data-respuesta-correcta="<?php echo htmlspecialchars($respuestaCorrecta ?? '', ENT_QUOTES, 'UTF-8'); ?>"
+                data-tiempo-restante="<?php echo $tiempoRestante; ?>"
             >
                 <div class="opciones<?php echo $respondio ? ' respondida' : ''; ?>">
                     <label 
@@ -216,6 +272,12 @@ $fueCorrecta = $_SESSION['respuesta_fue_correcta'] ?? null;
                 <div class="resultado-respuesta">
                     <?php if ($fueCorrecta): ?>
                         <p>¡Correcto!</p>
+                    <?php elseif ($tiempoAgotado): ?>
+                        <p>
+                            La respuesta correcta era:
+                            <?php echo $respuestaCorrecta; ?>
+                        </p>
+                        <p class="mensaje-tiempo-agotado">Te quedaste sin tiempo</p>
                     <?php else: ?>
                         <p>
                             Incorrecto. La respuesta correcta era: 

@@ -6,7 +6,7 @@ include("admin/funciones.php");
 
 aumentarVisita();
 
-if (isset($_GET['reiniciar'])) {
+function limpiarPartida() {
     unset(
         $_SESSION['correctas'],
         $_SESSION['incorrectas'],
@@ -14,19 +14,34 @@ if (isset($_GET['reiniciar'])) {
         $_SESSION['respondio'],
         $_SESSION['respuesta_elegida'],
         $_SESSION['respuesta_fue_correcta'],
+        $_SESSION['tiempo_agotado'],
         $_SESSION['respuesta_correcta'],
         $_SESSION['preguntaActualId'],
         $_SESSION['numPreguntaActual'],
         $_SESSION['preguntas'],
         $_SESSION['idPreguntas'],
+        $_SESSION['preguntasUsadas'],
+        $_SESSION['limite_respuesta'],
         $_SESSION['idCategoria'],
-        $_SESSION['nombreCategoria']
+        $_SESSION['nombreCategoria'],
+        $_SESSION['partida_finalizada'],
+        $_SESSION['final_contabilizado']
     );
 }
 
+if (isset($_GET['reiniciar'])) {
+    limpiarPartida();
+}
+
 if (isset($_GET['idCategoria'])) {
+    // Si la partida anterior terminó, la próxima categoría inicia una nueva.
+    if (!empty($_SESSION['partida_finalizada']) || isset($_SESSION['incorrectas'])) {
+        limpiarPartida();
+    }
+
     $_SESSION['usuario'] = "usuario";
     $_SESSION['idCategoria'] = $_GET['idCategoria'];
+    $_SESSION['partida_finalizada'] = false;
     header("Location: jugar.php");
     exit;
 }

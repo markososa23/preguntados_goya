@@ -2,13 +2,17 @@
 session_start();
 
 
-//Si el usuario no esta logeado lo enviamos al index
-if (!$_SESSION['usuario']) {
+// Solo se puede entrar al resultado al finalizar una partida.
+if (!isset($_SESSION['usuario'], $_SESSION['score']) || empty($_SESSION['partida_finalizada'])) {
     header("Location:index.php");
+    exit;
 }
 //Aumentamos la estadistica
 include("admin/funciones.php");
-aumentarCompletados();
+if (empty($_SESSION['final_contabilizado'])) {
+    aumentarCompletados();
+    $_SESSION['final_contabilizado'] = true;
+}
 
 ?>
 
@@ -39,16 +43,13 @@ aumentarCompletados();
                     <div class="chart" data-percent="<?php echo $_SESSION['score'] ?? 0; ?>">
                        <?php echo $_SESSION['score'] ?? 0; ?>%
                     </div>
-                    <style>
-
-
-    </style>
                     <!-- <h2>Escanea el QR para ver el ganador</h2>
                         <div class="qr"></div> -->
-      
-                                        
-</div> 
-<a href="index.php?reiniciar=1" class="boton-estilizado">Volver a intentar</a>  
+                </div>
+                <a href="index.php?reiniciar=1" class="boton-estilizado">Volver a intentar</a>
+            </div>
+        </div>
+    </div>
     <script src="juego.js"></script>
 </body>
 </html>

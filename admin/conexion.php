@@ -2,7 +2,7 @@
 //datos del servidor
 $server		="localhost";
 $username	="root";
-$password	="-";
+$password	="root";
 $bd			="preguntados";
 
 //creamos una conexión

@@ -25,6 +25,7 @@ if ($_SESSION['respuesta_fue_correcta']) {
     if ($correctas >= $totalPreguntasPorJuego) {
         $_SESSION['incorrectas'] = 0;
         $_SESSION['nombreCategoria'] = "Todas";
+        $_SESSION['partida_finalizada'] = true;
         header("Location: final.php");
         exit;
     }
@@ -32,8 +33,10 @@ if ($_SESSION['respuesta_fue_correcta']) {
     $_SESSION['respondio'] = false;
     $_SESSION['respuesta_elegida'] = null;
     $_SESSION['respuesta_fue_correcta'] = null;
+    $_SESSION['tiempo_agotado'] = false;
     $_SESSION['preguntaActualId'] = null;
     $_SESSION['respuesta_correcta'] = null;
+    $_SESSION['limite_respuesta'] = null;
 
     header("Location: index.php");
     exit;
@@ -41,6 +44,7 @@ if ($_SESSION['respuesta_fue_correcta']) {
 } else {
 
     $_SESSION['incorrectas'] = 1;
+    $_SESSION['partida_finalizada'] = true;
     $_SESSION['nombreCategoria'] = obtenerNombreTema($_SESSION['idCategoria']);
     header("Location: final.php");
     exit;
